@@ -67,6 +67,33 @@ def gAtAltitude(altitude):
     return G * earthM / np.square(altitude+earthR)
 
 
+def quickAnalyticalMethod():
+    t = np.linspace(tStart, tEnd, numOfPoints)
+    y = np.zeros(numOfPoints)
+    vy = np.zeros(numOfPoints)
+
+    vy = -np.sqrt(m * g / kConstant) * np.tanh(np.sqrt(kConstant * g / m) * t)
+    y = y_init - (m / kConstant) * np.log(np.cosh(np.sqrt(kConstant * g / m) * t))
+
+    print(vy)
+    y = y[y>0]
+    vy = vy[:len(y)]
+    t = t[:len(y)]
+
+    print(len(vy))
+    print(len(y))
+    print(len(t))
+
+    # Plotting
+    plt.figure(1)
+    plt.subplot(211)
+    plt.title("Fast Analytical Method")
+    plotData(t, y, 'Altitude /m', colour='red')
+    plt.subplot(212)
+    plotData(t, vy, 'Velocity /ms^-1', colour='pink')
+    plt.show()
+    print("This hit the ground in", t[-1], "seconds")
+
 
 def analyticalMethod(terminateAtFloor=True, variableRho=False, inMach=False):
     # Arrays holding time, displacement, and velocity in the y.
@@ -181,7 +208,8 @@ while True:
                    ' --(b) : Euler method for computing freefall\n'
                    ' --(c) : Euler method or Analytical method with variable air density\n'
                    ' --(d) : Euler method or Analytical with variable air density and in mach\n'
-                   ' --(e) : Euler method with variable air density and gravity\n')
+                   ' --(e) : Euler method with variable air density and gravity\n'
+                   ' --(f) : Quick Analytical Method')
 
     if answer == 'a':
         stopAtFloor = input("Do you want it to stop when it reaches the floor? Enter Y if so\n")
@@ -210,6 +238,9 @@ while True:
 
     elif answer == 'e':
         eulerMethod(True, True, True)
+
+    elif answer == 'f':
+        quickAnalyticalMethod()
 
     else:
         print("Thank you")
