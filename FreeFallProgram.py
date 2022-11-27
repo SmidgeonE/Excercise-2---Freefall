@@ -7,8 +7,8 @@ import matplotlib.pyplot as plt
 
 # %%
 
-# Reused function for plotting, for brevity
 def plotData(xData, yData, yLabel, xLabel='Time /s', colour='green'):
+    """Reused function for plotting, for brevity"""
     plt.plot(xData, yData, color=colour)
     plt.ylabel(yLabel)
     plt.xlabel(xLabel)
@@ -53,8 +53,8 @@ earthR = 6.371E6
 # Mass of Earth
 earthM = 5.972E24
 
-
 def tempAtAltitude(altitude):
+    """Piecewise function that defines temp at various altitudes"""
     if altitude <= 11000:
         return 288.0 - (0.0065*altitude)
     elif altitude >= 25100:
@@ -64,25 +64,26 @@ def tempAtAltitude(altitude):
 
 
 def gAtAltitude(altitude):
+    """Function that defines the accel due to gravity at all altitudes"""
     return G * earthM / np.square(altitude+earthR)
 
 
 def quickAnalyticalMethod():
+    """ This method employs the vector-based addition implemented in NumPy
+        This uses the graphics card to speed up the calculation significantly"""
     t = np.linspace(tStart, tEnd, numOfPoints)
     y = np.zeros(numOfPoints)
     vy = np.zeros(numOfPoints)
 
+
+    # Calculated values vectorally
     vy = -np.sqrt(m * g / kConstant) * np.tanh(np.sqrt(kConstant * g / m) * t)
     y = y_init - (m / kConstant) * np.log(np.cosh(np.sqrt(kConstant * g / m) * t))
 
-    print(vy)
+    # Cuts off all values where y goes below 0m
     y = y[y>0]
     vy = vy[:len(y)]
     t = t[:len(y)]
-
-    print(len(vy))
-    print(len(y))
-    print(len(t))
 
     # Plotting
     plt.figure(1)
@@ -96,11 +97,8 @@ def quickAnalyticalMethod():
 
 
 def analyticalMethod(terminateAtFloor=True, variableRho=False, inMach=False):
+    """Regular analytical method using a for loop, less efficient"""
     # Arrays holding time, displacement, and velocity in the y.
-    global t
-    global y
-    global vy
-    global k
     t = np.linspace(tStart, tEnd, numOfPoints)
     y = np.zeros(numOfPoints)
     vy = np.zeros(numOfPoints)
@@ -136,6 +134,9 @@ def analyticalMethod(terminateAtFloor=True, variableRho=False, inMach=False):
     plt.title("Analytical Method")
     plotData(t, y, 'Altitude /m', colour='red')
     plt.subplot(212)
+    # If inMach is set to true, it will return the graph as a
+    # Function of mach value at any altitude.
+    # Except for the first two values, to avoid any div by 0 error
     if inMach:
         plotData(t[2:], vy[2:]/mach[2:], 'Velocity /Mach', colour='pink')
     else:
@@ -145,8 +146,8 @@ def analyticalMethod(terminateAtFloor=True, variableRho=False, inMach=False):
 
 
 def eulerMethod(variableRho=False, inMach=False, variableGrav=False):
+    """Generalised euler method for calculating the free fall"""
     # Arrays holding time, displacement, and velocity in the y.
-
     t = np.zeros(numOfPoints)
     y = np.zeros(numOfPoints)
     vy = np.zeros(numOfPoints)
@@ -156,21 +157,26 @@ def eulerMethod(variableRho=False, inMach=False, variableGrav=False):
     y[0] = y_init
     vy[0] = vy_init
 
+    # Defining dt, as the width of each calculation
     dt = (tEnd-tStart)/numOfPoints
-    print(dt)
 
+    # Iterating over each point in time dt
     for i in range(1, numOfPoints):
         k = kConstant
         # If Rho is said to be variable, it will calculate it:
         if variableRho:
             k = (cd * area * rho0 / 2) * np.exp(-y[i - 1] / h)
+        # If it is in mach, it will also calculate the mach values for each altitude
         if inMach:
             mach[i] = np.sqrt(gamma * R * tempAtAltitude(y[i - 1]) / molMass)
 
+        # Calculates the new g, due to the change in g over distance
         if variableGrav:
             vy[i] = vy[i - 1] - dt * (gAtAltitude(y[i-1]) + (k / m) * np.abs(vy[i - 1]) * vy[i - 1])
         else:
             vy[i] = vy[i - 1] - dt * (g + (k / m) * np.abs(vy[i - 1]) * vy[i - 1])
+
+        # Iterates y, t
         y[i] = y[i-1] + dt*(vy[i-1])
         t[i] = t[i-1] + dt
 
@@ -189,19 +195,31 @@ def eulerMethod(variableRho=False, inMach=False, variableGrav=False):
     plt.title("Euler Method")
     plotData(t, y, 'Altitude /m', colour='red')
     plt.subplot(212)
+    # Same thing as before, plotted in terms of mach if desired
+    # Also prints the largest speed, as well as the time at which it occurs
     if inMach:
         plotData(t[2:], vy[2:]/mach[2:], 'Velocity /Mach', colour='pink')
+        indexOfMaxVal = np.abs(vy).argmax()
+
+        print("Largest speed:", vy[indexOfMaxVal]/mach[indexOfMaxVal])
+        print("Occured at:", t[indexOfMaxVal])
+
     else:
         plotData(t, vy, 'Velocity /ms^-1', colour='pink')
+        print("Largest speed:", np.max(np.abs(vy)))
     plt.show()
     print("This hit the ground in", t[-1], "seconds")
 
 # %%
 
+# This is the UI
+
 print('------\nWelcome to Exercise 2\n\nObjectives:\n'
       '--Familiarity with Numpy and Scipy with ODES\n--Using Euler '
       'method for a 1D free fall problem including air resistance.')
 
+
+# Loops until the user quits
 while True:
     answer = input('\nPlease enter one of the following letters, or q to quit:\n --(a) : '
                    'Analytical method with constant m, k, and g\n'
@@ -219,7 +237,7 @@ while True:
         eulerMethod()
 
     elif answer == 'c':
-        whichOne = input("Would you like to see the analytical (a) or euler method(b)?\n")
+        whichOne = input("Would you like to see the analytical (a) or euler method (b)?\n")
         if whichOne == 'a':
             analyticalMethod(True, True)
         elif whichOne == 'b':
@@ -228,7 +246,7 @@ while True:
             print("That was not an option, returning to start\n\n")
 
     elif answer == 'd':
-        whichOne = input("Would you like to see the analytical (a) or euler method(b)?\n")
+        whichOne = input("Would you like to see the analytical (a) or euler method (b)?\n")
         if whichOne == 'a':
             analyticalMethod(True, True, True)
         elif whichOne == 'b':
